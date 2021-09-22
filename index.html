@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .container {
+            width: 800px;
+        }
+        .area {
+            width: 100%;
+            height: 80px;
+            background-color: #c1ffc1;
+            color: #029602;
+            display:flex;
+            justify-content: center;
+            align-items:center;
+        }
+        .enter {
+            border-radius: 8px;
+            border: 3px dotted #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="drag-area" class="area">
+            アップロードしたいファイルをドラッグしてください。
+        </div>
+        <div id="progress">
+        </div>
+    </div>
+
+
+    <script type="text/javascript">
+        const Upload = function (id, progress)
+        {
+            const area = document.querySelector('#' + id);
+            const style = area.style;
+
+            const uuid = async function ()
+            {
+                const response = await fetch('upload.php', {
+                    method: 'GET',
+                    cache: 'no-cache'
+                })
+                return response.json()
+            }
+
+            area.addEventListener('dragover', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                area.classList.add('enter');
+                //console.log('over');
+            })
+            area.addEventListener('dragleave', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                area.classList.remove('enter');
+                //console.log('leave');
+            });
+            area.addEventListener('drop', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                area.classList.remove('enter');
+                
+                const files = e.dataTransfer.files
+                console.log(files);
+                
+                console.log('drop');
+
+                for (let i = 0; i < files.length; i++) {
+                    let file = files[i]
+                    const reader = new FileReader();
+                    reader.addEventListener('load', function (e) {
+                        const arrayBuffer = e.target.result
+                        const bytes = arrayBuffer.byteLength
+                        const chunkSize = 1024 * 1024
+                        const max = Math.ceil(bytes / chunkSize);
+                        fetch('upload.php', {
+                            method: 'GET',
+                            cache: 'no-cache'
+                        })
+                        .then(response => response.json())
+                        .then(function (json) {
+                            const uuid = json.uuid
+                            let size = 0
+                            let begin = 0
+                            const promises = [];
+                            while (size < bytes) {
+                                const buf = arrayBuffer.slice(begin, begin + chunkSize)
+                                begin = begin + chunkSize;
+                                i++
+                                blob = new Blob([buf])
+
+                                const data = new FormData()
+                                data.append('uuid', uuid)
+                                data.append('index', i)
+                                data.append('data', blob)
+
+                                promises.push(fetch('upload.php', {
+                                    method: 'PUT',
+                                    body: data,
+                                })
+                                .then((response) => response.json())
+                                .then((json) => {
+                                    if (json.success === true) {
+                                        progress(uuid, file.name, max)
+                                    }
+                                }))
+
+                                size += buf.byteLength
+                            }
+                            Promise.all(promises).then(() => {
+                                const data = new FormData()
+                                data.append('uuid', uuid)
+                                data.append('name', file.name)
+
+                                fetch('upload.php', {
+                                    method: 'PUT',
+                                    body: data,
+                                })
+                            })
+                        })
+                    })
+
+                    reader.addEventListener('progress', function (e) {
+
+                    })
+
+                    reader.readAsArrayBuffer(file);
+                }
+            }, false)
+        }
+
+        const Progress = function (id, name, max) {
+            let i = 0
+            const parent = document.querySelector('#' + id)
+            const bar = document.createElement('div')
+            bar.style.backgroundColor = '#ffffff'
+            bar.style.width = '100%'
+            bar.style.height = '20px'
+            bar.style.position = 'relative'
+            const text = document.createElement('div')
+            text.style.display = 'flex'
+            text.style.justifyContent = 'center'
+            text.style.alignItems = 'center';
+            text.style.color = '#666666'
+            text.style.width = '100%'
+            text.style.height = '20px'
+            text.style.zIndex = '100'
+            text.style.position = 'absolute'
+            text.style.top = '0'
+            text.style.left = '0'
+            text.style.right = '0'
+            text.style.bottom = '0'
+            const prog = document.createElement('div')
+            prog.style.backgroundColor = "#d1defc"
+            prog.style.height = '20px'
+            prog.style.width = '0%'
+            bar.appendChild(text)
+            bar.appendChild(prog)
+            const init = function () {
+                parent.appendChild(bar)
+                text.innerText = name
+            }
+
+            const countUp = function () {
+                i++
+                const par = Math.round(i / max * 100) + '%'
+                prog.style.width = par
+                console.log(par)
+            }
+
+            return {
+                init: init,
+                countUp: countUp
+            }
+        }
+
+        let progress = {}
+        new Upload('drag-area', (uuid, name, max) => {
+            if (progress[uuid]) {
+                
+            } else {
+                progress[uuid] = new Progress('progress', name, max)
+                progress[uuid].init()
+            }
+            progress[uuid].countUp()
+        });
+    </script>
+</body>
+</html>
