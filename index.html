@@ -98,7 +98,7 @@
                                 const data = new FormData()
                                 data.append('uuid', uuid)
                                 data.append('index', i)
-                                data.append('data', blob)
+                                data.append('data', blob, file.name)
 
                                 promises.push(fetch('upload.php', {
                                     method: 'PUT',
