@@ -1,0 +1,11 @@
+# テンポラリディレクトリへのアクセスを完全に制限
+Options -Indexes
+
+# すべてのアクセスを拒否
+<Files "*">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+# ディレクトリブラウジングを禁止
+IndexIgnore * 

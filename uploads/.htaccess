@@ -1,0 +1,27 @@
+# アップロードディレクトリへの直接アクセスを制限
+Options -Indexes
+
+# PHPファイルの実行を禁止
+<Files "*.php">
+    Order Deny,Allow
+    Deny from all
+</Files>
+
+# 特定のファイルタイプのみ許可
+<FilesMatch "\.(jpg|jpeg|png|gif|pdf|doc|docx|txt|zip|mp4|avi|mov)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# その他のファイルを拒否
+<FilesMatch "^.*$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# セキュリティヘッダーを追加
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options nosniff
+    Header set X-Frame-Options DENY
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule> 

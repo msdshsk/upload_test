@@ -4,192 +4,427 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>チャンクアップロード - リファクタリング版</title>
     <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
         .container {
-            width: 800px;
-        }
-        .area {
-            width: 100%;
-            height: 80px;
-            background-color: #c1ffc1;
-            color: #029602;
-            display:flex;
-            justify-content: center;
-            align-items:center;
-        }
-        .enter {
+            background: white;
             border-radius: 8px;
-            border: 3px dotted #ffffff;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .drop-zone {
+            border: 3px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background-color: #fafafa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+        }
+
+        .drop-zone:hover {
+            border-color: #007bff;
+            background-color: #f0f8ff;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #007bff;
+            background-color: #e3f2fd;
+            transform: scale(1.02);
+        }
+
+        .drop-zone-content {
+            pointer-events: none;
+        }
+
+        .drop-zone h3 {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .drop-zone p {
+            color: #999;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+        }
+
+        .progress-item {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .progress-item.completed {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .progress-item.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .progress-filename {
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .progress-percentage {
+            font-weight: 600;
+            color: #007bff;
+            margin-left: 10px;
+        }
+
+        .progress-cancel {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 10px;
+        }
+
+        .progress-cancel:hover {
+            background: #c82333;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            transition: width 0.3s ease;
+        }
+
+        .progress-info {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-error {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #007bff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn:link,
+        .btn:visited {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: #28a745;
+        }
+
+        .notification.error {
+            background: #dc3545;
+        }
+
+        .notification.info {
+            background: #17a2b8;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="drag-area" class="area">
-            アップロードしたいファイルをドラッグしてください。
+        <h1>チャンクアップロード - リファクタリング版</h1>
+        
+        <div id="drop-zone" class="drop-zone">
+            <div class="drop-zone-content">
+                <h3>📁 ファイルをドラッグ&ドロップ</h3>
+                <p>または、クリックしてファイルを選択</p>
+                <p>最大10個のファイル、各ファイル100MBまで</p>
+            </div>
         </div>
-        <div id="progress">
+
+        <div class="controls">
+            <button id="clear-all" class="btn btn-secondary">すべてクリア</button>
+            <button id="cancel-all" class="btn btn-danger">すべてキャンセル</button>
+            <a href="view_uploads.php" class="btn btn-primary">アップロードファイル一覧</a>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div id="total-files" class="stat-value">0</div>
+                <div class="stat-label">総ファイル数</div>
+            </div>
+            <div class="stat-item">
+                <div id="completed-files" class="stat-value">0</div>
+                <div class="stat-label">完了</div>
+            </div>
+            <div class="stat-item">
+                <div id="active-uploads" class="stat-value">0</div>
+                <div class="stat-label">アップロード中</div>
+            </div>
+        </div>
+
+        <div id="progress-container" class="progress-container">
+            <!-- プログレスバーが動的に追加されます -->
         </div>
     </div>
 
+    <!-- 通知用の要素 -->
+    <div id="notification" class="notification"></div>
 
-    <script type="text/javascript">
-        const Upload = function (id, progress)
-        {
-            const area = document.querySelector('#' + id);
-            const style = area.style;
+    <!-- JavaScriptモジュールの読み込み -->
+    <script src="js/UploadManager.js"></script>
+    <script src="js/ProgressManager.js"></script>
+    <script src="js/DragDropHandler.js"></script>
 
-            const uuid = async function ()
-            {
-                const response = await fetch('upload.php', {
-                    method: 'GET',
-                    cache: 'no-cache'
-                })
-                return response.json()
+    <script>
+        // アプリケーションの初期化
+        class UploadApp {
+            constructor() {
+                this.uploadManager = new UploadManager({
+                    endpoint: 'upload.php',
+                    chunkSize: 1024 * 1024, // 1MB
+                    maxConcurrentUploads: 3,
+                    retryCount: 3
+                });
+
+                this.progressManager = new ProgressManager('progress-container');
+                
+                this.dragDropHandler = new DragDropHandler('drop-zone', {
+                    allowedTypes: ['*'],
+                    maxFileSize: 100 * 1024 * 1024, // 100MB
+                    maxFiles: 10
+                });
+
+                this.stats = {
+                    totalFiles: 0,
+                    completedFiles: 0,
+                    activeUploads: 0
+                };
+
+                this.init();
             }
 
-            area.addEventListener('dragover', function (e) {
-                e.stopPropagation();
-                e.preventDefault();
-                area.classList.add('enter');
-                //console.log('over');
-            })
-            area.addEventListener('dragleave', function (e) {
-                e.stopPropagation();
-                e.preventDefault();
-                area.classList.remove('enter');
-                //console.log('leave');
-            });
-            area.addEventListener('drop', function (e) {
-                e.stopPropagation();
-                e.preventDefault();
-                area.classList.remove('enter');
-                
-                const files = e.dataTransfer.files
-                console.log(files);
-                
-                console.log('drop');
+            init() {
+                // ドラッグ&ドロップイベントの設定
+                this.dragDropHandler.setOnDropCallback((files) => {
+                    this.handleFilesSelected(files);
+                });
 
-                for (let i = 0; i < files.length; i++) {
-                    let file = files[i]
-                    const reader = new FileReader();
-                    reader.addEventListener('load', function (e) {
-                        const arrayBuffer = e.target.result
-                        const bytes = arrayBuffer.byteLength
-                        const chunkSize = 1024 * 1024
-                        const max = Math.ceil(bytes / chunkSize);
-                        fetch('upload.php', {
-                            method: 'GET',
-                            cache: 'no-cache'
-                        })
-                        .then(response => response.json())
-                        .then(function (json) {
-                            const uuid = json.uuid
-                            let size = 0
-                            let begin = 0
-                            const promises = [];
-                            while (size < bytes) {
-                                const buf = arrayBuffer.slice(begin, begin + chunkSize)
-                                begin = begin + chunkSize;
-                                i++
-                                blob = new Blob([buf])
+                this.dragDropHandler.setOnErrorCallback((error) => {
+                    this.showNotification(error, 'error');
+                });
 
-                                const data = new FormData()
-                                data.append('uuid', uuid)
-                                data.append('index', i)
-                                data.append('data', blob, file.name)
+                // コントロールボタンの設定
+                document.getElementById('clear-all').addEventListener('click', () => {
+                    this.clearAll();
+                });
 
-                                promises.push(fetch('upload.php', {
-                                    method: 'PUT',
-                                    body: data,
-                                })
-                                .then((response) => response.json())
-                                .then((json) => {
-                                    if (json.success === true) {
-                                        progress(uuid, file.name, max)
-                                    }
-                                }))
+                document.getElementById('cancel-all').addEventListener('click', () => {
+                    this.cancelAll();
+                });
+            }
 
-                                size += buf.byteLength
+            async handleFilesSelected(files) {
+                this.stats.totalFiles += files.length;
+                this.updateStats();
+
+                for (const file of files) {
+                    try {
+                        this.stats.activeUploads++;
+                        this.updateStats();
+
+                        await this.uploadManager.uploadFile(file, (uuid, fileName, current, total) => {
+                            this.progressManager.updateProgress(uuid, fileName, current, total);
+                            
+                            // 完了チェック
+                            if (current >= total) {
+                                this.stats.activeUploads--;
+                                this.stats.completedFiles++;
+                                this.updateStats();
+                                this.showNotification(`${fileName} のアップロードが完了しました`, 'success');
                             }
-                            Promise.all(promises).then(() => {
-                                const data = new FormData()
-                                data.append('uuid', uuid)
-                                data.append('name', file.name)
+                        });
 
-                                fetch('upload.php', {
-                                    method: 'PUT',
-                                    body: data,
-                                })
-                            })
-                        })
-                    })
-
-                    reader.addEventListener('progress', function (e) {
-
-                    })
-
-                    reader.readAsArrayBuffer(file);
+                    } catch (error) {
+                        this.stats.activeUploads--;
+                        this.updateStats();
+                        this.showNotification(`${file.name} のアップロードに失敗しました: ${error.message}`, 'error');
+                    }
                 }
-            }, false)
-        }
-
-        const Progress = function (id, name, max) {
-            let i = 0
-            const parent = document.querySelector('#' + id)
-            const bar = document.createElement('div')
-            bar.style.backgroundColor = '#ffffff'
-            bar.style.width = '100%'
-            bar.style.height = '20px'
-            bar.style.position = 'relative'
-            const text = document.createElement('div')
-            text.style.display = 'flex'
-            text.style.justifyContent = 'center'
-            text.style.alignItems = 'center';
-            text.style.color = '#666666'
-            text.style.width = '100%'
-            text.style.height = '20px'
-            text.style.zIndex = '100'
-            text.style.position = 'absolute'
-            text.style.top = '0'
-            text.style.left = '0'
-            text.style.right = '0'
-            text.style.bottom = '0'
-            const prog = document.createElement('div')
-            prog.style.backgroundColor = "#d1defc"
-            prog.style.height = '20px'
-            prog.style.width = '0%'
-            bar.appendChild(text)
-            bar.appendChild(prog)
-            const init = function () {
-                parent.appendChild(bar)
-                text.innerText = name
             }
 
-            const countUp = function () {
-                i++
-                const par = Math.round(i / max * 100) + '%'
-                prog.style.width = par
-                console.log(par)
+            updateStats() {
+                document.getElementById('total-files').textContent = this.stats.totalFiles;
+                document.getElementById('completed-files').textContent = this.stats.completedFiles;
+                document.getElementById('active-uploads').textContent = this.stats.activeUploads;
             }
 
-            return {
-                init: init,
-                countUp: countUp
+            clearAll() {
+                this.progressManager.clearAll();
+                this.stats = {
+                    totalFiles: 0,
+                    completedFiles: 0,
+                    activeUploads: 0
+                };
+                this.updateStats();
+                this.showNotification('すべてのプログレスがクリアされました', 'info');
+            }
+
+            cancelAll() {
+                this.uploadManager.cancelAll();
+                this.progressManager.clearAll();
+                this.stats.activeUploads = 0;
+                this.updateStats();
+                this.showNotification('すべてのアップロードがキャンセルされました', 'info');
+            }
+
+            showNotification(message, type = 'info') {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.className = `notification ${type}`;
+                notification.classList.add('show');
+
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
             }
         }
 
-        let progress = {}
-        new Upload('drag-area', (uuid, name, max) => {
-            if (progress[uuid]) {
-                
-            } else {
-                progress[uuid] = new Progress('progress', name, max)
-                progress[uuid].init()
-            }
-            progress[uuid].countUp()
+        // アプリケーションの開始
+        document.addEventListener('DOMContentLoaded', () => {
+            new UploadApp();
         });
     </script>
 </body>
-</html>
+</html> 
